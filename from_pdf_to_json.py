@@ -1,4 +1,7 @@
+import json
 from pprint import pprint
+
+
 import PyPDF2
 
 chapters = [{"title": "名詞･動詞編", "range": [17, 413]},
@@ -28,9 +31,8 @@ with open('20210312Uchinaaguchi_e.pdf', 'rb') as pdfFileObj:
     items = []
     current_entry = ""
     current_contents = ""
-    for page_text in get_pages(17, 18):
+    for page_text in get_pages(17, 577):
         lines = page_text.split("\n")
-        # print(lines[0], lines[-1])
         # lines[1: -1] なのは、ページタイトルとページ数を除くため
         for i, line in enumerate(lines[1:-1]):
             if "〈" in line:
@@ -51,6 +53,8 @@ with open('20210312Uchinaaguchi_e.pdf', 'rb') as pdfFileObj:
                 else:
                     current_contents += line
 
-for item in items:
-    print(f"Entry: {item['entry']}")
-    print(f"Contents: {item['contents']}")
+
+with open("preliminary-decomposition.jsonl", 'w') as fp:
+    for item in items:
+        json.dump(item, fp, ensure_ascii=False)
+        fp.write("\n")
