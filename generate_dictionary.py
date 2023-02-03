@@ -25,7 +25,7 @@ for item in items:
     dict_item["japanese"] = yamato
     contents = item["contents"]
     split_contents = re.split(r"(【\w】)", contents)[1:]
-    if len(split_contents) > 7:
+    if len(split_contents) % 2 == 1:
         raise Exception(f"{split_contents}")
     for i in range(0, len(split_contents), 2):
         section_head = split_contents[i]
