@@ -1,6 +1,6 @@
-from typing import Dict
+from typing import Set
 from itertools import islice
-from collections import Counter, defaultdict
+# from collections import Counter, defaultdict
 from csv import DictWriter
 from pprint import pprint
 import json
@@ -21,6 +21,8 @@ FONTNAMES = ['ITLECO+STIXGeneral-Regular',
              'UNGZJN+IPAexMincho',
              'WBGMYU+IPAexGothic']
 
+BOLDFONTS = [FONTNAMES[-1]]
+
 CHAPTERS = [{"title": "名詞･動詞編", "range": [17, 413]},
             {"title": "形容詞編", "range": [415, 495]},
             {"title": "副詞編", "range": [497, 577]},
@@ -28,7 +30,9 @@ CHAPTERS = [{"title": "名詞･動詞編", "range": [17, 413]},
 
 
 def get_char_obj(line_obj):
-    return line_obj._objs[0]._objs
+    # return line_obj._objs[0]._objs
+    ret = [obj for line in line_obj._objs for obj in line._objs]
+    return ret
 
 
 with open(output_path, 'w') as fp:
@@ -39,7 +43,7 @@ with open(output_path, 'w') as fp:
     # height_counter = Counter()
     mid_pos = []
     right_outliers = []
-    anno_set = set()
+    anno_set: Set = set()
     pages = {}
     for page_num, page_layout in enumerate(islice(extract_pages(path),
                                                   page_start,
@@ -50,10 +54,10 @@ with open(output_path, 'w') as fp:
             if isinstance(h_box, LTTextContainer):
                 head_x_coord = round(h_box.x0)
                 height = round(h_box.height, 1)
-                # line = {"Page": page_num,
-                #         "Head_Coord": head_x_coord,
-                #         "Height": height,
-                #         "Text": h_box.get_text().replace("\n", "")}
+                line = {"Page": page_num,
+                        "Head_Coord": head_x_coord,
+                        "Height": height,
+                        "Text": h_box.get_text().replace("\n", "")}
                 # h_coord_counter.update([head_x_coord])
                 # height_counter.update([height])
                 if head_x_coord < 100:
@@ -67,8 +71,8 @@ with open(output_path, 'w') as fp:
                     else:
                         right_col.append(h_box)
         pages[page_num] = left_col + right_col
-        # for line in left_col + right_col:
-        #     tsv_writer.writerow(line)
+        # for row in left_col + right_col:
+        #     tsv_writer.writerow(row)
 # print(sorted(h_coord_counter.items()))
 # print(sorted(height_counter.items()))
 # X
@@ -76,19 +80,24 @@ with open(output_path, 'w') as fp:
 # for entry in right_outliers:
 #     print(entry)
 
-font_stats = defaultdict(Counter)
-font_letter_stats = defaultdict(lambda: defaultdict(set))
+# font_stats = defaultdict(Counter)
+# font_letter_stats = defaultdict(lambda: defaultdict(set))
 items = []
 current_bold_text = ""
 current_contents = ""
 for page_num, page in pages.items():
-    for h_box in page:
-        # pprint(h_box)
+    for i, h_box in enumerate(page):
+        if page_num == 96:
+            print(i, h_box)
+            if i == 31:
+                print(get_char_obj(h_box))
         for char_obj in get_char_obj(h_box):
             if isinstance(char_obj, LTChar):
-                if char_obj.fontname == FONTNAMES[-1]:
+                fontname = char_obj.fontname
+                if fontname == FONTNAMES[-1] or (fontname == FONTNAMES[2] and char_obj.get_text() in ["/", "(", ")"]):
                     if current_contents and current_bold_text:
-                        items.append({"index": current_bold_text,
+                        items.append({"page": page_num,
+                                      "index": current_bold_text,
                                       "contents": current_contents})
                         current_bold_text = char_obj._text
                         current_contents = ""
@@ -101,7 +110,8 @@ for page_num, page in pages.items():
                 # font_stats[char_obj.fontname].update([char_obj.adv])
                 # font_letter_stats[char_obj.fontname][char_obj.adv].add(char_obj._text)
 if current_contents and current_bold_text:
-    items.append({"index": current_bold_text,
+    items.append({"page": page_num,
+                  "index": current_bold_text,
                   "contents": current_contents})
 
 
