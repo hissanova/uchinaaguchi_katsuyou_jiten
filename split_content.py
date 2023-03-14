@@ -9,21 +9,18 @@ chapters = [{"title": "名詞･動詞編", "range": [17, 413]},
             ]
 
 items = []
-with open("preliminary-decomposition.jsonl", 'r') as fp:
+with open("dict_items.jsonl", 'r') as fp:
     for line in fp:
         items.append(json.loads(line))
 
-# print(all(item["entry"].endswith("〉") for item in items))
 dictionary = []
 for item in items:
-    dict_item = {}
-    entry = item["entry"]
-    print(entry)
-    split_point = entry.index("〈")
-    okinawago, yamato = entry[:split_point], entry[split_point:]
-    dict_item["okinawan"] = okinawago
-    dict_item["japanese"] = yamato
-    contents = item["contents"]
+    original_contents = item["contents"]
+    split_point = original_contents.index("〉")
+    yamato, contents = original_contents[:split_point+1], original_contents[split_point+1:]
+    if len(contents) == 0:
+        print(item)
+    item["yamato"] = yamato
     split_contents = re.split(r"(【\w】)", contents)[1:]
     if len(split_contents) % 2 == 1:
         raise Exception(f"{split_contents}")
@@ -37,9 +34,13 @@ for item in items:
             key = "reference"
         else:
             raise NotImplementedError
-        dict_item[key] = section_head + split_contents[i + 1]
-    dictionary.append(dict_item)
+        item[key] = section_head + split_contents[i + 1]
+    item.pop("contents")
+    dictionary.append(item)
 
 
 for dict_item in dictionary[:5]:
     pprint(dict_item)
+
+print(all(item["yamato"].count("〈") == 1 for item in dictionary))
+print(all(item["yamato"].endswith("〉") for item in dictionary))
