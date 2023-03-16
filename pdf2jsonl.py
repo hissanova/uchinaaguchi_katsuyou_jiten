@@ -23,11 +23,6 @@ FONTNAMES = ['ITLECO+STIXGeneral-Regular',
 
 BOLDFONTS = [FONTNAMES[-1]]
 
-CHAPTERS = [{"title": "名詞･動詞編", "range": [17, 413]},
-            {"title": "形容詞編", "range": [415, 495]},
-            {"title": "副詞編", "range": [497, 577]},
-            ]
-
 
 def get_char_obj(line_obj):
     # return line_obj._objs[0]._objs
@@ -82,24 +77,34 @@ with open(output_path, 'w') as fp:
 
 # font_stats = defaultdict(Counter)
 # font_letter_stats = defaultdict(lambda: defaultdict(set))
+
 items = []
 current_bold_text = ""
+index_x_coord = 0
+index_size = 0.
 current_contents = ""
 for page_num, page in pages.items():
     for i, h_box in enumerate(page):
-        if page_num == 96:
-            print(i, h_box)
-            if i == 31:
-                print(get_char_obj(h_box))
-        for char_obj in get_char_obj(h_box):
+        # if page_num == 96:
+        #     print(i, h_box)
+        #     if i == 31:
+        #         print(get_char_obj(h_box))
+        for j, char_obj in enumerate(get_char_obj(h_box)):
+            if page_num == 17 and i == 0 and j == 0:
+                index_x_coord = round(char_obj.x0)
+                index_size = round(char_obj.height, 1)
             if isinstance(char_obj, LTChar):
                 fontname = char_obj.fontname
                 if fontname == FONTNAMES[-1] or (fontname == FONTNAMES[2] and char_obj.get_text() in ["/", "(", ")"]):
                     if current_contents and current_bold_text:
                         items.append({"page": page_num,
                                       "index": current_bold_text,
+                                      "index_x_coord": index_x_coord,
+                                      "index_size": index_size,
                                       "contents": current_contents})
                         current_bold_text = char_obj._text
+                        index_x_coord = round(char_obj.x0)
+                        index_size = round(char_obj.height, 1)
                         current_contents = ""
                     elif not current_contents:
                         current_bold_text += char_obj._text
@@ -112,6 +117,8 @@ for page_num, page in pages.items():
 if current_contents and current_bold_text:
     items.append({"page": page_num,
                   "index": current_bold_text,
+                  "index_x_coord": index_x_coord,
+                  "index_size": index_size,
                   "contents": current_contents})
 
 
