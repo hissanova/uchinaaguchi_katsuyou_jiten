@@ -2,8 +2,14 @@ import argparse
 from collections import Counter, defaultdict
 import json
 import re
-# from pprint import pprint
+from pprint import pprint
 from typing import Dict
+
+
+non_alnum_chs = ['「', '⺟', '\u2003', '＝', '］', '⻨', '。', '⻑', '⻄', '-', '！', '〉', '\[', '〜', '⻭', '⻲', '⺠', '⻤', '…', '・', '≒', '．', '［', '〈', '⺒', '？', '」', '/', '⻯', '.', '*', '\]', '：', '‘', '⻫', '⻩', '̶', '’', '⻘', '、', ':', '／', '；']
+
+# print(r"\(([\w" + r"".join(non_alnum_chs) + r"]+)\)")
+
 
 chapters = [
     {
@@ -58,6 +64,19 @@ def add_pos(item):
         raise ValueError
 
 
+def decompose_sample_sentences(contents):
+    decomposed = []
+    # print(contents)
+    contents = contents.replace("。", "").replace("（", "(").replace("）", ")")
+    pattern = r"\(([\w" + r"".join(non_alnum_chs) + r"]+)\)、?"
+    split_contents = re.split(pattern, contents)[:-1]
+    # print(len(split_contents))
+    # pprint(split_contents)
+    for k in range(0, len(split_contents), 2):
+        decomposed.append({"okinawa": split_contents[k] + "。",
+                           "yamato": split_contents[k + 1] + "。"})
+    return decomposed
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--format', choices=['json', 'jsonl'], default="json")
@@ -73,6 +92,7 @@ def main():
     index_pos_stats: Dict[int, Counter] = defaultdict(Counter)
     dictionary = []
     prev_main_entry = items[0]
+    ch_sets = [set(), set()]
     for i, item in enumerate(items):
         original_contents = item["contents"]
         # 大和口での意味、その他の内容に分割する
@@ -80,6 +100,9 @@ def main():
         yamato, contents = original_contents[:split_point +
                                              1], original_contents[
                                                  split_point + 1:]
+        # if any(s.isdigit() for s in yamato):
+        #     print(i, yamato)
+        #     print(contents)
         item["yamato"] = yamato
         # 見出し語の位置情報によって、親の語彙エントリーの関連語リストに登録する
         index_x_coord = item["index_x_coord"]
@@ -104,20 +127,21 @@ def main():
         split_contents = re.split(r"(【\w】)", contents)[1:]
         if len(split_contents) % 2 == 1:
             raise Exception(f"{split_contents}")
-        for i in range(0, len(split_contents), 2):
-            section_head = split_contents[i]
-            section = split_contents[i + 1]
+        for j in range(0, len(split_contents), 2):
+            section_head = split_contents[j]
+            section = split_contents[j + 1]
             if section_head == "【活】":
 
                 def decompose_verb_conj(contents):
-                    return contents
+                    return {c_type: conj for c_type, conj in zip(["過去形", "否定形", "てぃ形"], contents.split("、"))}
 
                 item["conjugation"] = decompose_verb_conj(section)
             elif section_head == "【例】":
-
-                def decompose_sample_sentences(contents):
-                    return contents
-
+                for ch in section:
+                    if ch.isalnum():
+                        ch_sets[0].add(ch)
+                    else:
+                        ch_sets[1].add(ch)
                 item["sample_sentences"] = decompose_sample_sentences(section)
             elif section_head == "【参】":
                 item["reference"] = section
@@ -135,7 +159,8 @@ def main():
         item["id"] = i
         # 辞書リストに登録
         dictionary.append(item)
-
+    # print(ch_sets[0])
+    # print(ch_sets[1])
     file_format = args.format
     if file_format == "jsonl":
         with open("katsuyou_jiten.jsonl", "w") as fp:
