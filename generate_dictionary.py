@@ -68,7 +68,8 @@ def decompose_sample_sentences(contents):
     decomposed = []
     # print(contents)
     contents = contents.replace("。", "").replace("（", "(").replace("）", ")")
-    pattern = r"\(([\w" + r"".join(non_alnum_chs) + r"]+)\)、?"
+    letters = r"[\w" + r"".join(non_alnum_chs) + "]*"
+    pattern = r"\((" + letters + r"(?:\(" + letters + r"\))?" + letters + r")\)、?"
     split_contents = re.split(pattern, contents)[:-1]
     # print(len(split_contents))
     # pprint(split_contents)
